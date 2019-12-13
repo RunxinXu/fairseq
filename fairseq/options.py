@@ -7,7 +7,6 @@ import argparse
 
 import torch
 import sys
-
 from fairseq import utils
 from fairseq.data.indexed_dataset import get_available_dataset_impl
 
@@ -408,6 +407,11 @@ def add_checkpoint_args(parser):
                        help='metric to use for saving "best" checkpoints')
     group.add_argument('--maximize-best-checkpoint-metric', action='store_true',
                        help='select the largest metric value for saving "best" checkpoints')
+
+    # my own 
+    group.add_argument('--attention-copy', action='store_true',
+                       help='attention copy')
+
     # fmt: on
     return group
 
@@ -515,6 +519,11 @@ def add_generation_args(parser):
 
     # special decoding format for advanced decoding.
     group.add_argument('--decoding-format', default=None, type=str, choices=['unigram', 'ensemble', 'vote', 'dp', 'bs'])
+    
+    # my own 
+    # action的意思是默认是False,有了这个参数就是True
+    group.add_argument('--attention-copy', action='store_true',
+                       help='if set, decoding returns the whole history of iterative refinement')
     # fmt: on
     return group
 

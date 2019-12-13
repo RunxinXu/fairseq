@@ -15,6 +15,7 @@ from collections import OrderedDict
 from itertools import chain
 
 import torch
+import nltk
 from fairseq import checkpoint_utils, distributed_utils, models, optim, utils
 from fairseq.file_io import PathManager
 from fairseq.meters import AverageMeter, StopwatchMeter, TimeMeter
@@ -562,6 +563,63 @@ class Trainer(object):
             )
 
         return logging_output
+        
+    def my_valid_step(self, progress, subset):
+        with torch.no_grad():
+            self.model.eval()
+
+            generator = self.task.build_generator(self.args)
+            
+            tgt_dict = self.task.target_dictionary
+
+            # 放生成的句子
+            hypo_sentences = []
+            # 放测试集句子
+            refer_sentences = []
+
+            tgt_sentences_list = []
+            tgt_sentences_path = os.path.join(self.args.data, subset, '{}.summary'.format(subset)) 
+            with open(tgt_sentences_path) as f:
+                for line in f.readlines():
+                    line = line.strip()
+                    tgt_sentences_list.append(line.split()) # 这个是因为原句子就已经分好词了 所以可以直接split
+
+            if self.args.attention_copy:
+                src_sentences_path = os.path.join(self.args.data, subset, '{}.val'.format(subset))
+                src_sentences_list = []
+                with open(src_sentences_path) as f:
+                    for line in f.readlines():
+                        line = line.strip()
+                        src_sentences_list.append(line.split())
+
+
+            for sample in progress:
+                sample = self._prepare_sample(sample)
+
+                # 注意这里model是list，因为generator的model是EnsembleModel
+                hypos = self.task.inference_step(generator, [self.model], sample, None)
+            
+                for i, sample_id in enumerate(sample['id'].tolist()):
+
+                    hypo = hypos[i][0] 
+                    generate_sentence = hypo['tokens'].tolist() 
+                    generate_sentence = [tgt_dict[x] for x in generate_sentence[:-1]]
+
+                    if self.args.attention_copy:
+                        attention = hypo['attention']  # src_len * tgt_len
+
+                        for i in range(len(generate_sentence)):
+                            if generate_sentence[i] == tgt_dict.unk_word:
+                                attend_src_index = torch.argmax(attention[:,i])
+                                generate_sentence[i] = src_sentences_list[sample_id][attend_src_index]
+
+                    hypo_sentences.append(generate_sentence)
+                    refer_sentence = tgt_sentences_list[sample_id] 
+                    refer_sentences.append([refer_sentence])
+
+            bleu = nltk.translate.bleu_score.corpus_bleu(refer_sentences, hypo_sentences)
+
+        return bleu
 
     def dummy_train_step(self, dummy_batch):
         """Dummy training step for warming caching allocator."""

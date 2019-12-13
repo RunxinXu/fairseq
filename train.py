@@ -197,6 +197,49 @@ def get_training_stats(trainer):
     stats['train_wall'] = trainer.get_meter('train_wall')
     return stats
 
+# 如果要使用bleu作为valid的依据
+# 只需要把validate改成my_validate
+# 注意如果使用bleu的话，记得把max_tokens_valid/max_sentences_valid 改大!!
+def my_validate(args, trainer, task, epoch_itr, subsets):
+    """Evaluate the model on the validation set(s) and return the losses."""
+
+    if args.fixed_validation_seed is not None:
+        # set fixed seed for every validation
+        utils.set_torch_seed(args.fixed_validation_seed)
+
+    valid_losses = []
+    for subset in subsets:
+        # Initialize data iterator
+        itr = task.get_batch_iterator(
+            dataset=task.dataset(subset),
+            max_tokens=args.max_tokens_valid,
+            max_sentences=args.max_sentences_valid,
+            max_positions=utils.resolve_max_positions(
+                task.max_positions(),
+                trainer.get_model().max_positions(),
+            ),
+            ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
+            required_batch_size_multiple=args.required_batch_size_multiple,
+            seed=args.seed,
+            num_shards=args.distributed_world_size, # 不用改成1和0，参考wiki-generate，因为用list维护保存了全部
+            shard_id=args.distributed_rank,
+            num_workers=args.num_workers,
+        ).next_epoch_itr(shuffle=False)
+        progress = progress_bar.build_progress_bar(
+            args, itr, epoch_itr.epoch,
+            prefix='valid on \'{}\' subset'.format(subset),
+            no_progress_bar='simple'
+        )
+
+        valid_bleu = trainer.my_valid_step(progress, subset)
+
+        print(subset)
+        print(valid_bleu)
+
+        valid_losses.append(
+            valid_bleu
+        )
+    return valid_losses
 
 def validate(args, trainer, task, epoch_itr, subsets):
     """Evaluate the model on the validation set(s) and return the losses."""

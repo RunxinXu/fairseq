@@ -46,6 +46,7 @@ from .token_block_dataset import TokenBlockDataset
 from .transform_eos_dataset import TransformEosDataset
 from .transform_eos_lang_pair_dataset import TransformEosLangPairDataset
 from .truncate_dataset import TruncateDataset
+from .wikibio_dataset import WikiBioDataset, WikiTableData, WikiTextData
 
 from .iterators import (
     CountingIterator,
@@ -106,4 +107,7 @@ __all__ = [
     'TransformEosLangPairDataset',
     'TruncateDataset',
     'TruncatedDictionary',
+    'WikiBioDataset',
+    'WikiTableData',
+    'WikiTextData',
 ]
