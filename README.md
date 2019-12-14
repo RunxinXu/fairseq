@@ -1,3 +1,13 @@
+how to add a task in fairseq? refer to the last commit.
+
+- write fairseqDataset
+- write fairseqTask
+- write fairseqEncoderDecoderModel
+- maybe have to modify the train.py 
+- write generate.py
+
+
+
 # <img src="fairseq_logo.png" width="30"> Introduction
 
 Fairseq(-py) is a sequence modeling toolkit that allows researchers and
